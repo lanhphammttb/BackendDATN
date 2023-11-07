@@ -60,3 +60,15 @@ exports.createUser = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+exports.listUser = async (req, res) => {
+  try {
+    // Lấy tất cả người dùng từ cơ sở dữ liệu
+    const users = await User.find();
+
+    return res.status(200).json({ users });
+  } catch (error) {
+    console.error('Error retrieving user list:', error);
+    return res.status(500).json({ message: error.message });
+  }
+};
