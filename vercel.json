@@ -1,5 +1,13 @@
 {
   "version": 2,
-  "builds": [{ "src": "index.js", "use": "@vercel/node" }],
-  "routes": [{ "src": "/api/v1/users/listUser", "dest": "index.js" }]
+  "builds": [
+    {
+      "src": "index.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    { "src": "/api/v1/users/listUser", "dest": "index.js" },
+    { "src": "/api/v1/users/login", "dest": "index.js" }
+  ]
 }
