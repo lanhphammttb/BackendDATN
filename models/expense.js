@@ -2,13 +2,23 @@ const mongoose = require('mongoose');
 
 const expenseSchema = new mongoose.Schema({
   groupId: {
-    type: mongoose.Schema.Types.ObjectId,
+    required: [true, 'Cần nhập id nhóm'],
+    type: Number,
     ref: 'ExpenseGroup',
   },
-  walletId: Number,
-  date_expense: String,
+  date_expense: {
+    type: String,
+    required: [true, 'Cần nhập ngày'],
+  },
+  value: {
+    type: Number,
+    required: [true, 'Cần nhập số tiền'],
+  },
+  walletId: {
+    type: Number,
+    required: [true, 'Cần nhập ví'],
+  },
   description: String,
-  value: Number,
 });
 
 module.exports = mongoose.model('Expense', expenseSchema);
