@@ -1,74 +1,243 @@
-const User = require('../models/user');
-const bcrypt = require('bcrypt');
-exports.login = (req, res) => {
-  const { email, password } = req.body;
+// UserController.js
 
-  User.findOne({ email: email })
-    .then((user) => {
-      if (!user) {
-        // Invalid credentials
-        return res
-          .status(401)
-          .json({ error: 'Thông tin tài khoản hoặc mật khẩu không chính xác' });
-      }
+const User = require("../models/user");
+const Account = require("../models/account");
 
-      bcrypt
-        .compare(password, user.password)
-        .then((isMatch) => {
-          if (!isMatch) {
-            // Invalid credentials
-            return res.status(401).json({ error: 'Nhập sai mật khẩu' });
-          }
-
-          // Successful login
-          res.json({ message: 'Đăng nhập thành công' });
-        })
-        .catch((err) => {
-          console.error('Error comparing passwords:', err);
-          res.status(500).json({ error: 'Internal server error' });
-        });
-    })
-    .catch((err) => {
-      console.error('Error finding user:', err);
-      res.status(500).json({ error: 'Internal server error' });
-    });
-};
-
-exports.createUser = async (req, res) => {
-  const { email, password } = req.body;
+// Get user profile
+async function getUserProfile(req, res) {
   try {
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(409).json({ message: 'User already exists' });
+    const user = await User.findById(req.user.userId).select("-password");
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+}
+
+// Create a new account for a user
+async function createAccount(req, res) {
+  try {
+    const { userId } = req.user;
+
+    // Check if the user already has an account
+    const existingAccount = await Account.findOne({ userId });
+
+    if (existingAccount) {
+      return res.status(409).json({ message: "User already has an account" });
     }
 
-    // Hash the password asynchronously.
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Generate a random account number
+    const accountNumber = generateAccountNumber();
 
-    // Create the new user object.
-    const newUser = new User({
-      email: email,
-      password: hashedPassword,
+    // Create a new account
+    const newAccount = new Account({
+      userId,
+      accountNumber,
     });
 
-    // Save the new user to the database.
-    await newUser.save();
+    // Save the account to the database
+    await newAccount.save();
 
-    return res.status(201).json({ message: 'User created successfully' });
+    res.status(201).json({ message: "Account created successfully" });
   } catch (error) {
-    console.error('User creation error:', error);
-    return res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Server Error" });
   }
-};
+}
 
-exports.listUser = async (req, res) => {
+// Generate a random 6-digit account number
+function generateAccountNumber() {
+  const min = 100000;
+  const max = 999999;
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// Get a list of accounts for a user
+async function getAccounts(req, res) {
   try {
-    // Lấy tất cả người dùng từ cơ sở dữ liệu
-    const users = await User.find();
+    const { userId } = req.user;
 
-    return res.status(200).json({ users });
+    // Find all accounts for the user
+    const accounts = await Account.find({ userId });
+
+    res.json(accounts);
   } catch (error) {
-    console.error('Error retrieving user list:', error);
-    return res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Server Error" });
   }
+}
+
+// Create a new group category
+async function createGroupCategory(req, res) {
+  try {
+    const { namegroup, groupID, listcategory } = req.body;
+
+    // Create a new group category
+    const newGroupCategory = new GroupCategory({
+      namegroup,
+      groupID,
+      listcategory,
+    });
+
+    // Save the group category to the database
+    await newGroupCategory.save();
+
+    res.status(201).json({ message: "Group category created successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+}
+
+// Get a list of group categories
+async function getGroupCategories(req, res) {
+  try {
+    const groupCategories = await GroupCategory.find().populate("listcategory");
+
+    res.json(groupCategories);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+}
+
+// Create a new expected cost
+async function createExpectedCost(req, res) {
+  try {
+    const {
+      description,
+      date,
+      listcategoryID,
+      quantity,
+      unitPrice,
+      totalAmount,
+      notes,
+    } = req.body;
+
+    // Create a new expected cost
+    const newExpectedCost = new ExpectedCost({
+      description,
+      date,
+      listcategoryID,
+      quantity,
+      unitPrice,
+      totalAmount,
+      notes,
+    });
+
+    // Save the expected cost to the database
+    await newExpectedCost.save();
+
+    res.status(201).json({ message: "Expected cost created successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+}
+
+// Get a list of expected costs
+async function getExpectedCosts(req, res) {
+  try {
+    const expectedCosts = await ExpectedCost.find().populate("listcategoryID");
+
+    res.json(expectedCosts);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+}
+
+// Create a new income
+async function createIncome(req, res) {
+  try {
+    const {
+      description,
+      date,
+      listcategoryID,
+      quantity,
+      unitPrice,
+      totalAmount,
+      notes,
+    } = req.body;
+
+    // Create a new income
+    const newIncome = new Income({
+      description,
+      date,
+      listcategoryID,
+      quantity,
+      unitPrice,
+      totalAmount,
+      notes,
+    });
+
+    // Save the income to the database
+    await newIncome.save();
+
+    res.status(201).json({ message: "Income created successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+}
+
+// Get a list of incomes
+async function getIncomes(req, res) {
+  try {
+    const incomes = await Income.find().populate("listcategoryID");
+
+    res.json(incomes);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+}
+
+// Create a new expense cost
+async function createExpenseCost(req, res) {
+  try {
+    const {
+      description,
+      date,
+      listcategoryID,
+      quantity,
+      unitPrice,
+      totalAmount,
+      notes,
+    } = req.body;
+
+    // Create a new expense cost
+    const newExpenseCost = new ExpenseCost({
+      description,
+      date,
+      listcategoryID,
+      quantity,
+      unitPrice,
+      totalAmount,
+      notes,
+    });
+
+    // Save the expense cost to the database
+    await newExpenseCost.save();
+
+    res.status(201).json({ message: "Expense cost created successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+}
+
+// Get a list of expense costs
+async function getExpenseCosts(req, res) {
+  try {
+    const expenseCosts = await ExpenseCost.find().populate("listcategoryID");
+
+    res.json(expenseCosts);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+}
+
+module.exports = {
+  getUserProfile,
+  createAccount,
+  getAccounts,
+  createGroupCategory,
+  getGroupCategories,
+  createExpectedCost,
+  getExpectedCosts,
+  createIncome,
+  getIncomes,
+  createExpenseCost,
+  getExpenseCosts,
 };
