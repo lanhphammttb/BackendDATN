@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const accountController = require("../controllers/accountController");
-const authMiddleware = require("../middleware/authMiddleware");
+const authMiddleware = require("../middlewares/authMiddleware");
 
 router.use(authMiddleware); // Sử dụng middleware để xác thực token cho tất cả các endpoint dưới đây
 router.get("/", accountController.getAccounts);
