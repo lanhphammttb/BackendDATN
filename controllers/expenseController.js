@@ -1,104 +1,172 @@
-const Expense = require('../models/expense');
-const handleResponse = require('../utils/responseHelper');
-// Lấy tất cả chi tiêu
-exports.getExpensesBy = async (req, res) => {
-  try {
-    // Lấy ngày bắt đầu của tháng hiện tại
-    // const currentDate = new Date();
+const Expense = require("../models/Expenses");
 
-    // // Lấy ngày bắt đầu của tháng kế tiếp
-    // const nextMonthStart = new Date(
-    //   currentDate.getFullYear(),
-    //   currentDate.getMonth() + 1,
-    //   1
-    // );
+const expenseController = {
+  getExpenses: async (req, res) => {
+    try {
+      const expenses = await Expense.find().populate("category_id");
+      return res.status(200).json(expenses);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Đã xảy ra lỗi" });
+    }
+  },
 
-    // // Lấy ngày bắt đầu của tháng trước
-    // const previousMonthStart = new Date(
-    //   currentDate.getFullYear(),
-    //   currentDate.getMonth() - 1,
-    //   1
-    // );
+  getExpenseById: async (req, res) => {
+    try {
+      const expenseId = req.params.id;
 
-    // const expenses = await Expense.find({
-    //   date_expense: {
-    //     $gte: previousMonthStart.toISOString().split('T')[0],
-    //     $lt: nextMonthStart.toISOString().split('T')[0],
-    //   },
-    // }).select('-__v');
-    const currentDate = new Date();
+      const expense = await Expense.findById(expenseId).populate("category_id");
+      if (!expense) {
+        return res.status(404).json({ message: "Expense không tồn tại" });
+      }
 
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth() + 1; // Tháng bắt đầu từ 0, nên cần +1
+      return res.status(200).json(expense);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Đã xảy ra lỗi" });
+    }
+  },
 
-    const expenses = await Expense.aggregate([
-      {
-        $match: {
-          date_expense: {
-            $gte: `${currentYear}-01-01`,
-            $lt: `${currentYear}-${
-              currentMonth + 1 < 10
-                ? '0' + (currentMonth + 1)
-                : currentMonth + 1
-            }-01`,
-          },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            year: {
-              $year: { $dateFromString: { dateString: '$date_expense' } },
-            },
-            month: {
-              $month: { $dateFromString: { dateString: '$date_expense' } },
-            },
-          },
-          totalValue: { $sum: '$value' },
-        },
-      },
-      {
-        $sort: {
-          '_id.year': 1,
-          '_id.month': 1,
-        },
-      },
-    ]);
+  createExpense: async (req, res) => {
+    try {
+      const {
+        description,
+        date,
+        category_id,
+        expenseType,
+        quantity,
+        price,
+        totalAmount,
+        note,
+      } = req.body;
 
-    const formattedExpenses = expenses.map((expense) => ({
-      year: expense._id.year,
-      month: expense._id.month,
-      totalValue: expense.totalValue,
-    }));
+      // Kiểm tra xem expenseType có hợp lệ không
+      if (!["Thu nhập", "Chi tiêu"].includes(expenseType)) {
+        return res.status(400).json({ message: "expenseType không hợp lệ" });
+      }
 
-    await handleResponse(res, formattedExpenses, 'Lấy thành công', null);
-  } catch (err) {
-    await handleResponse(res, null, null, err);
-  }
+      // Kiểm tra xem category_id có tồn tại không
+      const existingCategory = await Category.findById(category_id);
+      if (!existingCategory) {
+        return res.status(400).json({ message: "Category không tồn tại" });
+      }
+
+      // Tạo expense mới
+      const newExpense = new Expense({
+        description,
+        date,
+        category_id,
+        expenseType,
+        quantity,
+        price,
+        totalAmount,
+        note,
+      });
+
+      // Lưu expense vào cơ sở dữ liệu
+      await newExpense.save();
+
+      return res
+        .status(201)
+        .json({ message: "Expense đã được tạo thành công" });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Đã xảy ra lỗi" });
+    }
+  },
+
+  updateExpense: async (req, res) => {
+    try {
+      const expenseId = req.params.id;
+      const {
+        description,
+        date,
+        category_id,
+        expenseType,
+        quantity,
+        price,
+        totalAmount,
+        note,
+      } = req.body;
+
+      // Kiểm tra xem expense có tồn tại không
+      const existingExpense = await Expense.findById(expenseId);
+      if (!existingExpense) {
+        return res.status(404).json({ message: "Expense không tồn tại" });
+      }
+
+      // Kiểm tra xem expenseType có hợp lệ không
+      if (!["Thu nhập", "Chi tiêu"].includes(expenseType)) {
+        return res.status(400).json({ message: "expenseType không hợp lệ" });
+      }
+
+      // Kiểm tra xem category_id có tồn tại không
+      const existingCategory = await Category.findById(category_id);
+      if (!existingCategory) {
+        return res.status(400).json({ message: "Category không tồn tại" });
+      }
+
+      // Cập nhật thông tin expense
+      existingExpense.description = description;
+      existingExpense.date = date;
+      existingExpense.category_id = category_id;
+      existingExpense.expenseType = expenseType;
+      existingExpense.quantity = quantity;
+      existingExpense.price = price;
+      existingExpense.totalAmount = totalAmount;
+      existingExpense.note = note;
+
+      // Lưu thông tin expense đã cập nhật vào cơ sở dữ liệu
+      await existingExpense.save();
+
+      return res
+        .status(200)
+        .json({ message: "Expense đã được cập nhật thành công" });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Đã xảy ra lỗi" });
+    }
+  },
+
+  deleteExpense: async (req, res) => {
+    try {
+      const expenseId = req.params.id;
+
+      // Kiểm tra xem expense có tồn tại không
+      const existingExpense = await Expense.findById(expenseId);
+      if (!existingExpense) {
+        return res.status(404).json({ message: "Expense không tồn tại" });
+      }
+
+      // Xóa expense
+      await existingExpense.remove();
+
+      return res
+        .status(200)
+        .json({ message: "Expense đã được xóa thành công" });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Đã xảy ra lỗi" });
+    }
+  },
+
+  getExpensesByKeyword: async (req, res) => {
+    try {
+      const keyword = req.query.keyword;
+
+      const expenses = await Expense.find({
+        $or: [
+          { description: { $regex: keyword, $options: "i" } },
+          { note: { $regex: keyword, $options: "i" } },
+        ],
+      }).populate("category_id");
+
+      return res.status(200).json(expenses);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Đã xảy ra lỗi" });
+    }
+  },
 };
 
-// Tạo một chi tiêu mới
-exports.createExpense = async (req, res) => {
-  const { description, groupId, date_expense, value, walletId } = req.body;
-  try {
-    const expense = new Expense({
-      description,
-      groupId,
-      date_expense,
-      value,
-      walletId,
-    });
-
-    const savedExpense = await expense.save();
-    savedExpense.__v = undefined;
-
-    await handleResponse(
-      res,
-      savedExpense,
-      'Tạo chi tiêu mới thành công',
-      null
-    );
-  } catch (error) {
-    await handleResponse(res, null, null, error);
-  }
-};
+module.exports = expenseController;
